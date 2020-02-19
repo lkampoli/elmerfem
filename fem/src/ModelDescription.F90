@@ -5666,9 +5666,7 @@ END SUBROUTINE GetNodalElementSize
     Mesh => CurrentModel % Meshes 
     Pvar => VariableGet( Mesh % Variables, 'Rparam' )
     IF( ASSOCIATED( PVar ) ) THEN
-      PRINT *,'old pointer'
-      PValues => PVar % PValues      
-      PRINT *,'szie:',ASSOCIATED(PValues),SIZE( Pvalues)
+      PValues => PVar % Values      
     ELSE
       NULLIFY( PValues )
     END IF
@@ -5676,22 +5674,15 @@ END SUBROUTINE GetNodalElementSize
     ! a) use given vector of simulation parameters
     Parray => ListGetConstRealArray( Params,'Simulation Parameters',Found )
     IF( Found ) THEN      
-      PRINT *,'Parray:',piter,SIZE(Parray,1),SIZE(Parray,2)
-
       CALL Info('SetSimulationParameters','Setting parameters using constant array!',Level=6)
       IF( piter > SIZE(Parray,1) ) THEN
         FinishEarly = .TRUE.
       ELSE        
         NoParam = SIZE(Parray,2)
         IF(.NOT. ASSOCIATED( PValues ) ) THEN
-          PRINT *,'alloc pvalues:',NoParam
           ALLOCATE( PValues(NoParam) )
         END IF
         PValues = Parray(piter,1:NoParam)
-      END IF
-      PRINT *,'Pvalues:',Pvalues
-      IF( ASSOCIATED( PVar ) ) THEN
-        PRINT *,'Pvalues2:',PVar % Values
       END IF
     END IF
       
@@ -5737,7 +5728,7 @@ END SUBROUTINE GetNodalElementSize
       INTEGER :: FileUnit, Line, NOffset, FileTypeInd, FileRow, iostat, i, j
       CHARACTER(LEN=MAX_NAME_LEN) :: FileName, FileType
       CHARACTER(LEN=MAX_NAME_LEN) :: readstr 
-      REAL(KIND=dp), POINTER :: TmpValues(:)
+      REAL(KIND=dp), ALLOCATABLE :: TmpValues(:)
     
       Filename = ListGetString( Params,'Simulation Parameters Filename',Found )
       
@@ -5754,11 +5745,10 @@ END SUBROUTINE GetNodalElementSize
         END SELECT
       END IF
 
-      FileRow = ListGetInteger( Params,'Simulation Parameters First Row',Found ) 
-      IF(.NOT. Found ) FileRow = 1
-      FileRow = FileRow + (piter-1)
+      FileRow = ListGetInteger( Params,'Simulation Parameters Row Offset',Found ) 
+      FileRow = FileRow + piter
       
-      OPEN (NEWUNIT=FileUnit,FILE=FileName)
+      OPEN(NEWUNIT=FileUnit,FILE=FileName)
       
       IF( FileTypeInd == 1 ) THEN
         Noffset = 2
@@ -5769,13 +5759,18 @@ END SUBROUTINE GetNodalElementSize
           END IF
           i = INDEX( readstr,'RUN NO.') 
           IF( i > 0 ) THEN
-            CALL Info('SetSimulationParameters','Paramater lines start after line: '//TRIM(I2S(Line)))
+            CALL Info('SetSimulationParameters','Paramater lines start after line: '//TRIM(readstr),Level=6)
             EXIT
           END IF
           i = INDEX( readstr,'Number of Variables =' )
           IF( i > 0 ) THEN
-            READ( readstr(i+1:),* ) NoParam
-            CALL Info('ReadSimulationParameters','Number of parameters in DAKOTA file: '//TRIM(I2S(NoParam)))
+            j = MAX_NAME_LEN
+            READ( readstr(i+21:j),*,IOSTAT=iostat) NoParam
+            IF( iostat /= 0 ) THEN
+              CALL Fatal('SetSimulationParameters','Could not read parameters from line: '//TRIM(readstr))
+            END IF
+            CALL Info('ReadSimulationParameters','Number of parameters in DAKOTA file: '&
+                //TRIM(I2S(NoParam)),Level=6)
           END IF
         END DO
       ELSE
@@ -5793,18 +5788,29 @@ END SUBROUTINE GetNodalElementSize
         READ( FileUnit,'(A)',IOSTAT=iostat) readstr
         IF( iostat /= 0 ) THEN
           CALL Warn('SetSimulationParameters','Could not read parameter line: '//TRIM(I2S(Line)))
+          CLOSE(FileUnit)
           FinishEarly = .TRUE.
           RETURN
         END IF
         IF( Line == FileRow ) EXIT
       END DO
-
+      CLOSE(FileUnit)
+      
+      IF( InfoActive(20) ) THEN
+        PRINT *,'Parameter line:',TRIM(readstr)
+      END IF
+      
       ALLOCATE( TmpValues(Noffset+NoParam) )
-      READ(readstr,* ) TmpValues(1:Noffset+NoParam)
-
+      READ(readstr,*,IOSTAT=iostat) TmpValues(1:Noffset+NoParam)
+      IF( iostat /= 0 ) THEN
+        CALL Warn('SetSimulationParameters','Could not read parameters from: '//TRIM(readstr))
+        FinishEarly = .TRUE.
+        RETURN
+      END IF
+            
       PValues(1:NoParam) = TmpValues(NOffset+1:Noffset+NoParam)
 
-      CALL Info('SetSimulationParameters','Parameters read from file',Level=10)
+      CALL Info('SetSimulationParameters','Parameters read from file',Level=8)
       
     END SUBROUTINE ReadSimulationParameters
         

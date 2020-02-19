@@ -1,6 +1,6 @@
-! optimize the heat distribution of an object with four heaters
-! so that the temperature at the center of each heater is as 
-! desired. 
+! Run a case over 4 parameter configurations.
+!
+! P.R. 19.2.2020
 
 Check Keywords warn
 
@@ -11,7 +11,7 @@ Header
 End
 
 Simulation
-  Max Output Level = 10
+  Max Output Level = 7
   Coordinate System = String Cartesian
   Coordinate Mapping(3) = Integer 1 2 3
   Simulation Type = Steady State 
@@ -20,7 +20,24 @@ Simulation
 
   Use Simulation Parameters = Logical True
   Simulation Parameters Max Iterations = Integer 10
-  Simulation Parameters(4,4) = Real 1 0 0 0 0 2 0 0 0 0 3 0 0 0 0 4
+
+! a) give parameters in sif
+! Simulation Parameters(4,4) = Real 1 0 0 0 0 2 0 0 0 0 3 0 0 0 0 4
+!  Simulation Parameters Max Iterations = Integer 10
+
+! b) give parameters as an ascii matrix:
+  Simulation Parameters Filename = File "par.dat"
+  Simulation Parameters Count = Integer 4  ! columns in matrix
+  Simulation Parameters Row Offset = Integer 2 ! starts from line 3
+  Simulation Parameters Max Iterations = Integer 4 ! lines 3-6
+
+! c) give parameters as an Dakota file:
+!  Simulation Parameters Filename = File "LHS_distributions.out"
+!  Simulation Parameters Filetype = String "dakota"
+!  Simulation Parameters Count = Integer 4  ! columns in matrix
+!  Simulation Parameters Row Offset = Integer 2 ! starts from line 3
+!  Simulation Parameters Column Offset = Integer 2 ! start from column 3
+!  Simulation Parameters Max Iterations = Integer 4 ! lines 3-6
 
   Post File = "case.vtu"
 End
@@ -120,6 +137,6 @@ Boundary Condition 1
   Temperature = Real 0
 End
 
-Solver 1 :: Reference Norm = Real 22.027671047551930
+Solver 1 :: Reference Norm = 0.94747143
 
 

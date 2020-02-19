@@ -1996,8 +1996,6 @@ END INTERFACE
      cum_Timestep = 0
      ddt = -1.0_dp  
      DO interval = 1,TimeIntervals
-
-       PRINT *,'interval:',interval
        
 !------------------------------------------------------------------------------
 !      go through number of timesteps within an interval
@@ -2017,8 +2015,6 @@ END INTERFACE
 
        RealTimestep = 1
        DO timestep = 1,Timesteps(interval)
-
-         PRINT *,'timestep:',timestep
          
          cum_Timestep = cum_Timestep + 1
          sStep(1) = cum_Timestep
