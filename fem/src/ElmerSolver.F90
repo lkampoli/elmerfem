@@ -587,14 +587,11 @@ END INTERFACE
            END IF
          END IF
 
-         TimeIntervals = SIZE(Timesteps)
-
          CoupledMaxIter = ListGetInteger( CurrentModel % Simulation, &
              'Steady State Max Iterations', GotIt, minv=1 )
          IF ( .NOT. GotIt ) CoupledMaxIter = 1
-
-         CoupledMinIter = ListGetInteger( CurrentModel % Simulation, &
-             'Steady State Min Iterations', GotIt )
+         
+         TimeIntervals = SIZE(Timesteps)
        ELSE
          ! Steady state
          !------------------------------------------------------------------------------
@@ -604,15 +601,18 @@ END INTERFACE
          Timesteps(1) = ListGetInteger( CurrentModel % Simulation, &
              'Steady State Max Iterations', GotIt,minv=1 )
          IF ( .NOT. GotIt ) Timesteps(1) = 1
-
+         CoupledMaxIter = 1 
+         
          ALLOCATE(TimestepSizes(1,1))
          TimestepSizes(1,1) = 1.0_dp
-         
-         CoupledMaxIter = 1
-         CoupledMinIter = 1
          TimeIntervals  = 1
        END IF
 
+      
+       CoupledMinIter = ListGetInteger( CurrentModel % Simulation, &
+           'Steady State Min Iterations', GotIt )
+       IF( .NOT. GotIt ) CoupledMinIter = 1 
+       
        OutputIntervals => ListGetIntegerArray( CurrentModel % Simulation, &
            'Output Intervals', GotIt )
        IF( GotIt ) THEN
@@ -1943,27 +1943,19 @@ END INTERFACE
      INTEGER, SAVE ::  stepcount=0, RealTimestep
      LOGICAL :: ExecThis,SteadyStateReached=.FALSE.,PredCorrControl, &
          DivergenceControl, HaveDivergence
-
      REAL(KIND=dp) :: CumTime, MaxErr, AdaptiveLimit, &
          AdaptiveMinTimestep, AdaptiveMaxTimestep, timePeriod
      INTEGER :: SmallestCount, AdaptiveKeepSmallest, StepControl=-1, nSolvers
      LOGICAL :: AdaptiveTime = .TRUE., AdaptiveRough, AdaptiveSmart, Found
      INTEGER :: AllocStat
-
-     REAL(KIND=dp) :: AdaptiveIncrease, AdaptiveDecrease
-     
+     REAL(KIND=dp) :: AdaptiveIncrease, AdaptiveDecrease     
      TYPE(Solver_t), POINTER :: Solver    
      TYPE AdaptiveVariables_t 
        TYPE(Variable_t) :: Var
        REAL(KIND=dp) :: Norm
      END TYPE AdaptiveVariables_t
-     TYPE(AdaptiveVariables_t), ALLOCATABLE, SAVE :: AdaptVars(:)
-     
+     TYPE(AdaptiveVariables_t), ALLOCATABLE, SAVE :: AdaptVars(:)     
      REAL(KIND=dp) :: newtime, prevtime=0, maxtime, exitcond
-#ifndef USE_ISO_C_BINDINGS
-     REAL(KIND=dp) :: RealTime
-#endif
-     
      INTEGER, SAVE :: PrevMeshI = 0
      
      !$OMP PARALLEL
@@ -2005,6 +1997,8 @@ END INTERFACE
      ddt = -1.0_dp  
      DO interval = 1,TimeIntervals
 
+       PRINT *,'interval:',interval
+       
 !------------------------------------------------------------------------------
 !      go through number of timesteps within an interval
 !------------------------------------------------------------------------------
@@ -2024,6 +2018,8 @@ END INTERFACE
        RealTimestep = 1
        DO timestep = 1,Timesteps(interval)
 
+         PRINT *,'timestep:',timestep
+         
          cum_Timestep = cum_Timestep + 1
          sStep(1) = cum_Timestep
 
